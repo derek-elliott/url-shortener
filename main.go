@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/derek-elliott/url-shortner/cmd"
+	"github.com/derek-elliott/url-shortener/cmd"
 	log "github.com/sirupsen/logrus"
 )
 

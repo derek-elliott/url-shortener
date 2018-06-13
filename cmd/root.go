@@ -12,12 +12,12 @@ import (
 
 type config struct {
 	Hostname string
-	Port  int
-	DB    DBConfig
-	Redis RedisConfig
+	Port     int
+	DB       dbConfig
+	Redis    redisConfig
 }
 
-type DBConfig struct {
+type dbConfig struct {
 	User string
 	Pass string
 	Name string
@@ -25,12 +25,13 @@ type DBConfig struct {
 	Port int
 }
 
-type RedisConfig struct {
+type redisConfig struct {
 	Pass string
 	Host string
 	Port int
 }
 
+// RootCmd is the root command for the command line tool to start Snip
 var RootCmd = &cobra.Command{
 	Use: "snip",
 	Run: startServer,
@@ -54,8 +55,7 @@ func init() {
 
 func startServer(cmd *cobra.Command, args []string) {
 	app := api.App{}
-	app.db := SnipDB{}
-	if err := db.InitDB(conf.DB.User, conf.DB.Pass, conf.DB.Name, conf.DB.Host, conf.DB.Port); err != nil {
+	if err := app.InitDB(conf.DB.User, conf.DB.Pass, conf.DB.Name, conf.DB.Host, conf.DB.Port); err != nil {
 		log.WithError(err).Fatal("Unable to set up database")
 	}
 	if err := app.InitCache(conf.Redis.Pass, conf.Redis.Host, conf.Redis.Port); err != nil {

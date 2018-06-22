@@ -18,6 +18,6 @@ func Logger(next http.Handler) http.Handler {
 			"method":        r.Method,
 			"request_uri":   r.RequestURI,
 			"response_time": time.Since(start),
-		}).Info("Request recieved")
+		}).Info("Request received")
 	})
 }

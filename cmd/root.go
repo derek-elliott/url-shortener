@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/derek-elliott/url-shortener/api"
+	"github.com/derek-elliott/url-shortener/cache"
+	"github.com/derek-elliott/url-shortener/db"
 	homedir "github.com/mitchellh/go-homedir"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -14,7 +16,7 @@ type config struct {
 	Hostname string
 	Port     int
 	DB       dbConfig
-	Redis    redisConfig
+	Cache    cacheConfig
 }
 
 type dbConfig struct {
@@ -25,7 +27,7 @@ type dbConfig struct {
 	Port int
 }
 
-type redisConfig struct {
+type cacheConfig struct {
 	Pass string
 	Host string
 	Port int
@@ -54,14 +56,15 @@ func init() {
 }
 
 func startServer(cmd *cobra.Command, args []string) {
-	app := api.App{}
-	if err := app.InitDB(conf.DB.User, conf.DB.Pass, conf.DB.Name, conf.DB.Host, conf.DB.Port); err != nil {
+	db := db.GormStore{}
+	if err := db.InitDB(conf.DB.User, conf.DB.Pass, conf.DB.Name, conf.DB.Host, conf.DB.Port); err != nil {
 		log.WithError(err).Fatal("Unable to set up database")
 	}
-	if err := app.InitCache(conf.Redis.Pass, conf.Redis.Host, conf.Redis.Port); err != nil {
+	cache := cache.RedisCache{}
+	if err := cache.InitCache(conf.Cache.Pass, conf.Cache.Host, conf.Cache.Port); err != nil {
 		log.WithError(err).Fatal("Unable to set up cache")
 	}
-	app.Hostname = conf.Hostname
+	app := api.App{DB: *db, Cache: *cache, Hostname: conf.Hostname}
 	log.Fatal(app.Run(conf.Port))
 }
 

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/derek-elliott/url-shortner/cache"
+	"github.com/derek-elliott/url-shortner/db"
 	"github.com/gorilla/mux"
-	"github.com/jinzhu/gorm"
 	// Blank import for Postgres support
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	log "github.com/sirupsen/logrus"
@@ -18,8 +18,8 @@ import (
 // App holds the router, db and Redis connections
 type App struct {
 	Router   *mux.Router
-	DB       *gorm.DB
-	Cache    *redis.Client
+	DB       db.Store
+	Cache    cache.Cache
 	Hostname string
 }
 
@@ -41,33 +41,6 @@ type RegisterPayload struct {
 }
 
 var routes Routes
-
-// InitDB initializes the database
-func (a *App) InitDB(user, pass, name, host string, port int) error {
-	connStr := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable password=%s", host, port, user, name, pass)
-	db, err := gorm.Open("postgres", connStr)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	db.AutoMigrate(&ShortURL{})
-	a.DB = db
-	return nil
-}
-
-// InitCache initializes the Redis client
-func (a *App) InitCache(pass, host string, port int) error {
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", host, port),
-		Password: pass,
-		DB:       0,
-	})
-	if _, err := client.Ping().Result(); err != nil {
-		return err
-	}
-	a.Cache = client
-	return nil
-}
 
 // InitRouter initializes the router
 func (a *App) InitRouter() {
@@ -139,7 +112,7 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	if err := json.Unmarshal(body, &payload); err != nil {
+	if err = json.Unmarshal(body, &payload); err != nil {
 		log.WithError(err).Error("Unable to deserialize request body")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -150,24 +123,33 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	shortURL := ShortURL{}
+	shortURL := db.ShortURL{}
 	shortURL.URL = payload.URL
 	shortURL.Expiration = time.Now().Add(duration).String()
 
-	shortURL.createShortURL(a.DB)
+	if err = a.DB.CreateShortURL(&shortURL); err != nil {
+		log.WithError(err).Error("Database Error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	tokenURL := ShortURL{}
-	tokenURL.Token = ConvertIDToToken(int(shortURL.ID))
-	tokenURL.ShortenedURL = fmt.Sprintf("%s/%s", a.Hostname, shortURL.Token)
+	shortURL.Token = ConvertIDToToken(int(shortURL.ID))
+	shortURL.ShortenedURL = fmt.Sprintf("%s/%s", a.Hostname, shortURL.Token)
 
-	shortURL.updateShortURL(a.DB, tokenURL)
+	if err = a.DB.UpdateShortURL(&shortURL); err != nil {
+		log.WithError(err).Error("Database Error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	shortener := Shortener{shortURL.Token, shortURL.ShortenedURL}
+	if err = a.Cache.SetURL(shortURL.Token, shortURL.ShortenedURL, duration); err != nil {
+		log.WithError(err).Error("Cache Error")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
-	shortener.setURL(a.Cache, duration)
 	w.WriteHeader(http.StatusCreated)
-
-	response := URLData{shortURL.URL, shortURL.Token, shortURL.ShortenedURL, shortURL.Expiration}
+	response := db.URLData{URL: shortURL.URL, Token: shortURL.Token, ShortenedURL: shortURL.ShortenedURL, Expiration: shortURL.Expiration}
 	if err = json.NewEncoder(w).Encode(response); err != nil {
 		log.WithError(err).Error("Unable to serialize response")
 		w.WriteHeader(http.StatusInternalServerError)

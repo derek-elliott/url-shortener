@@ -2,15 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/derek-elliott/url-shortener"
-  packages = [
-    "api",
-    "cmd"
-  ]
-  revision = "d0702400640721010e7b6b545d6ca033e559f9dc"
-
-[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
@@ -197,6 +188,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1692f017410ef3e50ac58db74eb2594f7564bf85fa2930a70fe19ee1046a81fd"
+  inputs-digest = "ead9a8b8116c8bdd658a3370e2fadf6243f9320c98ed0dfa7061754e950f1a36"
   solver-name = "gps-cdcl"
   solver-version = 1

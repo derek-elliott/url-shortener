@@ -24,7 +24,7 @@
 #   go-tests = true
 #   unused-packages = true
 
-
+ignored = ["github.com/derek-elliott/url-shortener"]
 [prune]
   go-tests = true
   unused-packages = true

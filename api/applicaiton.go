@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/derek-elliott/url-shortner/cache"
-	"github.com/derek-elliott/url-shortner/db"
+	"github.com/derek-elliott/url-shortener/cache"
+	"github.com/derek-elliott/url-shortener/db"
 	"github.com/gorilla/mux"
 	// Blank import for Postgres support
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	log "github.com/sirupsen/logrus"
 )
 
-// App holds the router, db and Redis connections
+// App holds the router, db and cache connections
 type App struct {
 	Router   *mux.Router
 	DB       db.Store

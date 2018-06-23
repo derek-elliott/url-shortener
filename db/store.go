@@ -3,7 +3,7 @@ package db
 // Store represents a generic database store for URL shorteners
 type Store interface {
 	InitDB(user, pass, name, host string, port int) error
-	GetShortUrl(token string) (*ShortURL, error)
+	GetShortURL(token string) (*ShortURL, error)
 	CreateShortURL(shortURL *ShortURL) error
 	UpdateShortURL(shortURL *ShortURL) error
 	DeleteShortURL(shortURL *ShortURL) error

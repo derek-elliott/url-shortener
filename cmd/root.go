@@ -46,13 +46,9 @@ var (
 )
 
 func init() {
+	cobra.OnInitialize(loadConfig)
 	RootCmd.PersistentFlags().IntVar(&port, "port", 0, "The port to bind on startup")
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.snip.yaml)")
-	var err error
-	conf, err = loadConfig()
-	if err != nil {
-		log.WithError(err).Error("Unable to load config")
-	}
 }
 
 func startServer(cmd *cobra.Command, args []string) {
@@ -64,11 +60,11 @@ func startServer(cmd *cobra.Command, args []string) {
 	if err := cache.InitCache(conf.Cache.Pass, conf.Cache.Host, conf.Cache.Port); err != nil {
 		log.WithError(err).Fatal("Unable to set up cache")
 	}
-	app := api.App{DB: *db, Cache: *cache, Hostname: conf.Hostname}
+	app := api.App{DB: &db, Cache: &cache, Hostname: conf.Hostname}
 	log.Fatal(app.Run(conf.Port))
 }
 
-func loadConfig() (*config, error) {
+func loadConfig() {
 
 	viper.SetEnvPrefix("SNIP")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -80,21 +76,17 @@ func loadConfig() (*config, error) {
 		home, err := homedir.Dir()
 		if err != nil {
 			log.WithError(err).Fatal("Unable to load config")
-			return conf, err
 		}
 
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".snip")
 	}
 	if err := viper.ReadInConfig(); err != nil {
-		log.WithError(err).Fatal("Unable to load config")
-		return conf, err
+		log.WithError(err).Fatal("Unable to read config")
 	}
 
 	conf = &config{}
 	if err := viper.Unmarshal(conf); err != nil {
-		log.WithError(err).Fatal("Unable to load config")
-		return conf, err
+		log.WithError(err).Fatal("Unable to deserialize config")
 	}
-	return conf, nil
 }

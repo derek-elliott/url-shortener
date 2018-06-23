@@ -1,0 +1,12 @@
+hostname: localhost
+port: 10000
+db:
+  user: snip
+  pass: snip
+  name: snip
+  host: localhost
+  port: 5432
+cache:
+  pass: snip
+  host: localhost
+  port: 6379

@@ -40,11 +40,9 @@ type RegisterPayload struct {
 	TTL string `json:"ttl"`
 }
 
-var routes Routes
-
 // InitRouter initializes the router
 func (a *App) InitRouter() {
-	routes = Routes{
+	routes := Routes{
 		Route{
 			"Register",
 			"POST",
@@ -82,14 +80,13 @@ func (a *App) InitRouter() {
 			a.DeleteURL,
 		},
 	}
+
 	a.Router = mux.NewRouter().StrictSlash(true)
 	for _, route := range routes {
-		var handler http.Handler
-
 		a.Router.Methods(route.Method).
 			Path(route.Pattern).
 			Name(route.Name).
-			Handler(handler)
+			Handler(route.HandlerFunc)
 	}
 	a.Router.Use(Logger)
 }

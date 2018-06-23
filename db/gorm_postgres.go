@@ -20,13 +20,13 @@ func (s *GormStore) InitDB(user, pass, name, host string, port int) error {
 	if err != nil {
 		return err
 	}
-	defer db.Close()
 	db.AutoMigrate(&ShortURL{})
 	s.client = db
 	return nil
 }
 
-func (s *GormStore) getShortURL(token string) (*ShortURL, error) {
+// GetShortURL gets a the ShortURL for the given token from Postgres
+func (s *GormStore) GetShortURL(token string) (*ShortURL, error) {
 	shortURL := ShortURL{}
 	if err := s.client.Where("token = ?", token).First(&shortURL).Error; err != nil {
 		return &shortURL, err
@@ -34,21 +34,24 @@ func (s *GormStore) getShortURL(token string) (*ShortURL, error) {
 	return &shortURL, nil
 }
 
-func (s *GormStore) createShortURL(shortURL *ShortURL) error {
+// CreateShortURL creates the given ShortURL in Postgres
+func (s *GormStore) CreateShortURL(shortURL *ShortURL) error {
 	if err := s.client.Create(shortURL).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *GormStore) updateShortURL(shortURL *ShortURL) error {
+// UpdateShortURL updates the given ShortURL in Postgres
+func (s *GormStore) UpdateShortURL(shortURL *ShortURL) error {
 	if err := s.client.Model(shortURL).Updates(shortURL).Error; err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *GormStore) deleteShortURL(shortURL *ShortURL) error {
+// DeleteShortURL Deletes the given ShortURL from Postgres
+func (s *GormStore) DeleteShortURL(shortURL *ShortURL) error {
 	if err := s.client.Delete(shortURL).Error; err != nil {
 		return err
 	}

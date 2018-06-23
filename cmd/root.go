@@ -48,7 +48,7 @@ var (
 func init() {
 	cobra.OnInitialize(loadConfig)
 	RootCmd.PersistentFlags().IntVar(&port, "port", 0, "The port to bind on startup")
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.snip.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Set config file (default is $HOME/.snip.yaml)")
 }
 
 func startServer(cmd *cobra.Command, args []string) {

@@ -1,7 +1,9 @@
 BINARY_NAME=snip
-LDFLAGS=-X main.date $(date -u '+%Y-%m-%d_%I:%M:%S%p') -X main.gitCommit $(git rev-parse HEAD)
+DATE=$(shell date -u '+%Y-%m-%d_%I:%M:%S%p')
+GIT_COMMIT=$(shell git rev-parse HEAD)
+LDFLAGS="-X main.date=$(DATE) -X main.gitCommit=$(GIT_COMMIT)"
 DOCKER_REPO=saywhat1/snip
-VERSION=$(git rev-parse --short=5 HEAD)
+VERSION=$(shell git rev-parse --short=5 HEAD)
 
 all: test build
 build:
@@ -18,7 +20,7 @@ stop:
 	docker-compose down
 
 docker-build:
-	docker build --build-arg LDFLAGS=${LDFLAGS} -t ${DOCKER_REPO}:${VERSION} -t ${DOCKER_REPO}:latest .
+	docker build --build-arg LDFLAGS=${LDFLAGS} -t ${DOCKER_REPO}:$(VERSION) -t ${DOCKER_REPO}:latest .
 docker-push:
 	docker push ${DOCKER_REPO}
 publish: docker-build docker-push

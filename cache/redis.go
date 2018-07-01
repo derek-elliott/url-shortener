@@ -43,3 +43,11 @@ func (c *RedisCache) GetURL(token string) (*Shortener, error) {
 	shortener := Shortener{token, url}
 	return &shortener, nil
 }
+
+// DeleteURL deletes the URL for the given token from Redis
+func (c *RedisCache) DeleteURL(token string) error {
+	if err := c.client.Del(token).Err(); err != nil {
+		return err
+	}
+	return nil
+}

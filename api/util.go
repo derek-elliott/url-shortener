@@ -1,24 +1,15 @@
 package api
 
 import (
+	"crypto/rand"
 	b64 "encoding/base64"
-	"strconv"
 )
 
-// ConvertIDToToken converts an id into a URL base 64 encoded string
-func ConvertIDToToken(id int) string {
-	return b64.URLEncoding.EncodeToString([]byte(strconv.Itoa(id)))
-}
-
-// ConvertTokenToID converts a base 64 encoded string into an id
-func ConvertTokenToID(token string) (int, error) {
-	idStr, err := b64.URLEncoding.DecodeString(token)
-	if err != nil {
-		return 0, err
+// GenerateToken generates a cryptographically secure random byte array of length len and encodes it into a URL-safe base 64 string
+func GenerateToken(len int) (string, error) {
+	b := make([]byte, len)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
-	id, err := strconv.Atoi(string(idStr))
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
+	return b64.URLEncoding.EncodeToString(b), nil
 }

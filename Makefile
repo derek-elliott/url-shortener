@@ -15,6 +15,7 @@ clean:
 	rm -f dist/*
 run-dev: build
 	docker-compose up -d
+	sleep 5
 	./dist/$(BINARY_NAME) --config example-config.yml
 stop:
 	docker-compose down

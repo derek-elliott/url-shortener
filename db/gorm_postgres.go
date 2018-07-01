@@ -69,12 +69,8 @@ func (s *GormStore) CollectStats() (*Stats, error) {
 		return &stats, err
 	}
 	stats.TotalRedirects = 0
-	stats.AverageResponse = 0
 	for _, url := range allUrls {
 		stats.TotalRedirects += url.Redirects
-	}
-	for _, url := range allUrls {
-		stats.AverageResponse += (url.Redirects / stats.TotalRedirects) * url.AverageResponse
 	}
 	return &stats, nil
 }

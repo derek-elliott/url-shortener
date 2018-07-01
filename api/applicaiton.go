@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/derek-elliott/url-shortener/cache"
@@ -14,6 +15,8 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	log "github.com/sirupsen/logrus"
 )
+
+const tokenLength = 6
 
 // App holds the router, db and cache connections
 type App struct {
@@ -81,7 +84,7 @@ func (a *App) InitRouter() {
 		},
 	}
 
-	a.Router = mux.NewRouter().StrictSlash(true)
+	a.Router = mux.NewRouter()
 	for _, route := range routes {
 		a.Router.Methods(route.Method).
 			Path(route.Pattern).
@@ -117,12 +120,23 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 	duration, err := time.ParseDuration(payload.TTL)
 	if err != nil {
 		log.WithError(err).Error("Unable to parse TTL from request body")
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	shortURL := db.ShortURL{}
+	if _, err = url.ParseRequestURI(payload.URL); err != nil {
+		log.WithError(err).Error("Unable to parse URL from request body")
+		w.WriteHeader(http.StatusBadRequest)
+	}
 	shortURL.URL = payload.URL
 	shortURL.Expiration = time.Now().Add(duration).String()
+	shortURL.Token, err = GenerateToken(tokenLength)
+	if err != nil {
+		log.WithError(err).Error("Error generating URL token")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	shortURL.ShortenedURL = fmt.Sprintf("%s/%s", a.Hostname, shortURL.Token)
 
 	if err = a.DB.CreateShortURL(&shortURL); err != nil {
 		log.WithError(err).Error("Database Error")
@@ -130,23 +144,20 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shortURL.Token = ConvertIDToToken(int(shortURL.ID))
-	shortURL.ShortenedURL = fmt.Sprintf("%s/%s", a.Hostname, shortURL.Token)
-
-	if err = a.DB.UpdateShortURL(&shortURL); err != nil {
-		log.WithError(err).Error("Database Error")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err = a.Cache.SetURL(shortURL.Token, shortURL.ShortenedURL, duration); err != nil {
+	if err = a.Cache.SetURL(shortURL.Token, shortURL.URL, duration); err != nil {
 		log.WithError(err).Error("Cache Error")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	response := db.URLData{URL: shortURL.URL, Token: shortURL.Token, ShortenedURL: shortURL.ShortenedURL, Expiration: shortURL.Expiration}
+	response := db.ShortURL{
+		URL:          shortURL.URL,
+		Token:        shortURL.Token,
+		ShortenedURL: shortURL.ShortenedURL,
+		Expiration:   shortURL.Expiration,
+		Redirects:    0,
+	}
 	if err = json.NewEncoder(w).Encode(response); err != nil {
 		log.WithError(err).Error("Unable to serialize response")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -156,7 +167,16 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 
 // RedirectToURL redirects a request to the specified URL
 func (a *App) RedirectToURL(w http.ResponseWriter, r *http.Request) {
-
+	token := mux.Vars(r)["token"]
+	url, err := a.Cache.GetURL(token)
+	if err != nil {
+		log.WithError(err).Error("Unable to obtain URL from cache")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	go a.incrementRedirects(token)
+	http.Redirect(w, r, url.URL, http.StatusFound)
+	return
 }
 
 // GetStats retrieves all stats for the service
@@ -177,4 +197,15 @@ func (a *App) DeleteAll(w http.ResponseWriter, r *http.Request) {
 // DeleteURL removes the specified shortener form the service
 func (a *App) DeleteURL(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func (a *App) incrementRedirects(token string) {
+	shortURL, err := a.DB.GetShortURL(token)
+	if err != nil {
+		log.WithError(err).Error("Unable to retrieve ShortURL from database")
+	}
+	shortURL.Redirects++
+	if err := a.DB.UpdateShortURL(shortURL); err != nil {
+		log.WithError(err).Error("Unable to update ShortURL in database")
+	}
 }

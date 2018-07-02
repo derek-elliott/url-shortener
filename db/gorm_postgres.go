@@ -74,7 +74,7 @@ func (s *GormStore) DeleteShortURL(token string) error {
 // CollectStats collects the overall stats of the service
 func (s *GormStore) CollectStats() (*Stats, error) {
 	stats := Stats{}
-	if err := s.client.Table("short_url").Count(&stats.TotalURLs).Error; err != nil {
+	if err := s.client.Model(&ShortURL{}).Count(&stats.TotalURLs).Error; err != nil {
 		return &stats, err
 	}
 	allURLs := ShortURLS{}

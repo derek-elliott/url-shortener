@@ -61,13 +61,13 @@ func (a *App) InitRouter() {
 		Route{
 			"Stats",
 			"GET",
-			"/stats",
+			"/admin/stats",
 			a.GetStats,
 		},
 		Route{
 			"URLStats",
 			"GET",
-			"/stats/{token}",
+			"/admin/stats/{token}",
 			a.GetURLStats,
 		},
 		Route{

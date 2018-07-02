@@ -159,7 +159,7 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 		Redirects:    0,
 	}
 	if err = json.NewEncoder(w).Encode(response); err != nil {
-		log.WithError(err).Error("Unable to serialize response")
+		log.WithError(err).Error("Unable to serialize RegisterShortener response")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -181,22 +181,67 @@ func (a *App) RedirectToURL(w http.ResponseWriter, r *http.Request) {
 
 // GetStats retrieves all stats for the service
 func (a *App) GetStats(w http.ResponseWriter, r *http.Request) {
-
+	stats, err := a.DB.CollectStats()
+	if err != nil {
+		log.WithError(err).Error("Unable to collect stats from database")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(&stats); err != nil {
+		log.WithError(err).Error("Unable to serialize GetStats response")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 // GetURLStats retrieves stats for the specified shortener
 func (a *App) GetURLStats(w http.ResponseWriter, r *http.Request) {
-
+	token := mux.Vars(r)["token"]
+	shortURL, err := a.DB.GetShortURL(token)
+	if err != nil {
+		log.WithError(err).Error("Unable to retrieve ShortURL from database")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(&shortURL); err != nil {
+		log.WithError(err).Error("Unable to seralize GetURLStats response")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 }
 
 // DeleteAll removes all shorteners from the service
 func (a *App) DeleteAll(w http.ResponseWriter, r *http.Request) {
-
+	tokens, err := a.DB.GetAllURLTokens()
+	if err != nil {
+		log.WithError(err).Error("Unable to get all tokens from database in DeleteAll")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	for _, token := range tokens {
+		if err := a.DB.DeleteShortURL(token); err != nil {
+			log.WithError(err).WithField("token", token).Error("Unable to delete from database")
+		}
+		if err := a.Cache.DeleteURL(token); err != nil {
+			log.WithError(err).WithField("token", token).Error("Unable to delete from cache")
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return
 }
 
 // DeleteURL removes the specified shortener form the service
 func (a *App) DeleteURL(w http.ResponseWriter, r *http.Request) {
-
+	token := mux.Vars(r)["token"]
+	if err := a.DB.DeleteShortURL(token); err != nil {
+		log.WithError(err).Error("Unable to delete ShortURL in DeleteURL")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return
 }
 
 func (a *App) incrementRedirects(token string) {

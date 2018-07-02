@@ -34,6 +34,15 @@ func (s *GormStore) GetShortURL(token string) (*ShortURL, error) {
 	return &shortURL, nil
 }
 
+// GetAllURLTokens retrieves all URL tokens from Postgres
+func (s *GormStore) GetAllURLTokens() ([]string, error) {
+	var tokens []string
+	if err := s.client.Table("short_url").Select("token").Scan(tokens).Error; err != nil {
+		return nil, err
+	}
+	return tokens, nil
+}
+
 // CreateShortURL creates the given ShortURL in Postgres
 func (s *GormStore) CreateShortURL(shortURL *ShortURL) error {
 	if err := s.client.Create(shortURL).Error; err != nil {
@@ -51,7 +60,11 @@ func (s *GormStore) UpdateShortURL(shortURL *ShortURL) error {
 }
 
 // DeleteShortURL Deletes the given ShortURL from Postgres
-func (s *GormStore) DeleteShortURL(shortURL *ShortURL) error {
+func (s *GormStore) DeleteShortURL(token string) error {
+	shortURL, err := s.GetShortURL(token)
+	if err != nil {
+		return err
+	}
 	if err := s.client.Delete(shortURL).Error; err != nil {
 		return err
 	}
@@ -61,15 +74,15 @@ func (s *GormStore) DeleteShortURL(shortURL *ShortURL) error {
 // CollectStats collects the overall stats of the service
 func (s *GormStore) CollectStats() (*Stats, error) {
 	stats := Stats{}
-	if err := s.client.Table("short_url").Count(&stats.TotalUrls).Error; err != nil {
+	if err := s.client.Table("short_url").Count(&stats.TotalURLs).Error; err != nil {
 		return &stats, err
 	}
-	allUrls := ShortURLS{}
-	if err := s.client.Find(&allUrls).Error; err != nil {
+	allURLs := ShortURLS{}
+	if err := s.client.Find(&allURLs).Error; err != nil {
 		return &stats, err
 	}
 	stats.TotalRedirects = 0
-	for _, url := range allUrls {
+	for _, url := range allURLs {
 		stats.TotalRedirects += url.Redirects
 	}
 	return &stats, nil

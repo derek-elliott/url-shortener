@@ -151,6 +151,7 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
 	response := db.ShortURL{
 		URL:          shortURL.URL,
 		Token:        shortURL.Token,
@@ -188,6 +189,7 @@ func (a *App) GetStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(&stats); err != nil {
 		log.WithError(err).Error("Unable to serialize GetStats response")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -205,6 +207,7 @@ func (a *App) GetURLStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(&shortURL); err != nil {
 		log.WithError(err).Error("Unable to seralize GetURLStats response")
 		w.WriteHeader(http.StatusInternalServerError)

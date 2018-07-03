@@ -301,7 +301,7 @@ func TestGetStats(t *testing.T) {
 			},
 			url:            "/stats",
 			payload:        "",
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusNotFound,
 		},
 	}
 
@@ -357,7 +357,7 @@ func TestGetURLStats(t *testing.T) {
 			},
 			url:            "/stats/testurl",
 			payload:        "",
-			expectedStatus: http.StatusInternalServerError,
+			expectedStatus: http.StatusNotFound,
 		},
 	}
 

@@ -36,9 +36,13 @@ func (s *GormStore) GetShortURL(token string) (*ShortURL, error) {
 
 // GetAllURLTokens retrieves all URL tokens from Postgres
 func (s *GormStore) GetAllURLTokens() ([]string, error) {
+	var shortURLs ShortURLS
 	var tokens []string
-	if err := s.client.Table("short_url").Select("token").Scan(tokens).Error; err != nil {
+	if err := s.client.Select("token").Find(&shortURLs).Error; err != nil {
 		return nil, err
+	}
+	for _, shortURL := range shortURLs {
+		tokens = append(tokens, shortURL.Token)
 	}
 	return tokens, nil
 }
@@ -65,7 +69,7 @@ func (s *GormStore) DeleteShortURL(token string) error {
 	if err != nil {
 		return err
 	}
-	if err := s.client.Delete(shortURL).Error; err != nil {
+	if err := s.client.Delete(&shortURL).Error; err != nil {
 		return err
 	}
 	return nil

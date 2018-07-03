@@ -19,6 +19,7 @@ type Stats struct {
 
 // ShortURL represents the shortened url and all related metadata
 type ShortURL struct {
+	ID           uint   `json:"-"`
 	URL          string `json:"url"`
 	Token        string `json:"token"`
 	ShortenedURL string `json:"shortened_url"`

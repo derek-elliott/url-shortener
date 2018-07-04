@@ -7,7 +7,7 @@ import (
 )
 
 func TestGenerateToken(t *testing.T) {
-	token, err := GenerateToken(6)
+	token, err := generateToken(6)
 	assert.Nil(t, err)
 	assert.NotEqual(t, "", token, "Should not be an empty string")
 }

@@ -97,7 +97,12 @@ func (a *App) InitRouter() {
 // Run runs the application
 func (a *App) Run(port int) error {
 	a.InitRouter()
-	go a.cleanExpiredRecords()
+	go func() {
+		for {
+			a.cleanExpiredRecords()
+			time.Sleep(30 * time.Second)
+		}
+	}()
 	bindAddress := fmt.Sprintf(":%d", port)
 	err := http.ListenAndServe(bindAddress, a.Router)
 	return err
@@ -131,7 +136,7 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 	}
 	shortURL.URL = payload.URL
 	shortURL.Expiration = time.Now().Add(duration).Format(time.RFC3339)
-	shortURL.Token, err = GenerateToken(tokenLength)
+	shortURL.Token, err = generateToken(tokenLength)
 	if err != nil {
 		log.WithError(err).Error("Error generating URL token")
 		w.WriteHeader(http.StatusInternalServerError)
@@ -153,15 +158,8 @@ func (a *App) RegisterShortener(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	response := db.ShortURL{
-		URL:          shortURL.URL,
-		Token:        shortURL.Token,
-		ShortenedURL: shortURL.ShortenedURL,
-		Expiration:   shortURL.Expiration,
-		Redirects:    0,
-	}
-	if err = json.NewEncoder(w).Encode(response); err != nil {
-		log.WithField("response", response).WithError(err).Error("Unable to serialize RegisterShortener response")
+	if err = json.NewEncoder(w).Encode(shortURL); err != nil {
+		log.WithField("response", shortURL).WithError(err).Error("Unable to serialize RegisterShortener response")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -227,9 +225,8 @@ func (a *App) DeleteAll(w http.ResponseWriter, r *http.Request) {
 	for _, token := range tokens {
 		if err := a.DB.DeleteShortURL(token); err != nil {
 			log.WithError(err).WithField("token", token).Error("Unable to delete from database")
-		}
-		if err := a.Cache.DeleteURL(token); err != nil {
-			log.WithError(err).WithField("token", token).Error("Unable to delete from cache")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -252,6 +249,7 @@ func (a *App) incrementRedirects(token string) {
 	shortURL, err := a.DB.GetShortURL(token)
 	if err != nil {
 		log.WithField("token", token).WithError(err).Error("Unable to retrieve ShortURL from database")
+		return
 	}
 	shortURL.Redirects++
 	if err := a.DB.UpdateShortURL(shortURL); err != nil {
@@ -260,35 +258,29 @@ func (a *App) incrementRedirects(token string) {
 }
 
 func (a *App) cleanExpiredRecords() {
-	for {
-		tokens, err := a.DB.GetAllURLTokens()
+	tokens, err := a.DB.GetAllURLTokens()
+	if err != nil {
+		log.WithError(err).Error("Unable to get all tokens in cleanExpiredRecords")
+	}
+	now := time.Now()
+	count := 0
+	for _, token := range tokens {
+		shortURL, err := a.DB.GetShortURL(token)
 		if err != nil {
-			log.WithError(err).Error("Unable to get all tokens in cleanExpiredRecords")
+			log.WithField("token", token).WithError(err).Error("Unable to retrieve ShortURL from database in cleanExpiredRecords")
+			continue
 		}
-		now := time.Now()
-		count := 0
-		for _, token := range tokens {
-			if len(tokens) == 0 {
-				continue
-			}
-			shortURL, err := a.DB.GetShortURL(token)
-			if err != nil {
-				log.WithField("token", token).WithError(err).Error("Unable to retrieve ShortURL from database in cleanExpiredRecords")
-				continue
-			}
-			expireTime, err := time.Parse(time.RFC3339, shortURL.Expiration)
-			if err != nil {
-				log.WithField("time", expireTime).WithError(err).Error("Unable to parse expire time from database")
-				continue
-			}
-			if now.After(expireTime) {
-				a.DB.DeleteShortURL(token)
-				count++
-			}
+		expireTime, err := time.Parse(time.RFC3339, shortURL.Expiration)
+		if err != nil {
+			log.WithField("time", expireTime).WithError(err).Error("Unable to parse expire time from database")
+			continue
 		}
-		if count > 0 {
-			log.WithField("deleted_urls", count).Info("Expired URLs removed from database")
+		if now.After(expireTime) {
+			a.DB.DeleteShortURL(token)
+			count++
 		}
-		time.Sleep(30 * time.Second)
+	}
+	if count > 0 {
+		log.WithField("deleted_urls", count).Info("Expired URLs removed from database")
 	}
 }

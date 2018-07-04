@@ -6,7 +6,7 @@ import (
 )
 
 // GenerateToken generates a cryptographically secure random byte array of length len and encodes it into a URL-safe base 64 string
-func GenerateToken(len int) (string, error) {
+func generateToken(len int) (string, error) {
 	b := make([]byte, len)
 	if _, err := rand.Read(b); err != nil {
 		return "", err

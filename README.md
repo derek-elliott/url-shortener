@@ -1,4 +1,4 @@
-# Snip: A simple URL Shortener
+# Snip: A Simple URL Shortener
 
 This is a very simple URL shortener that I build in my free time while on vacation to keep busy.
 
